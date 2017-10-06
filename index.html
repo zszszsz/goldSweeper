@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>gold sweeper</title>
+    <script>
+        function newField(height, width, num) {
+            "use strict";
+            var field = Array.from({ length: height }, () => Array.from({ length: width }, () => 0));
+            for (var n = 0; n < num; n++) {
+                var y = Math.floor(Math.random() * height);
+                var x = Math.floor(Math.random() * width);
+                field[y][x] += 1;
+            }
+            return field;
+        }
+        function scan(field) {
+            "use strict";
+            var height = field.length;
+            var width = field[0].length;
+            var result = Array.from({ length: height }, (v, y) => Array.from({ length: width }, (v, x) => {
+                var count = 0;
+                for (var yc = y - 1; yc < y + 2; yc++) {
+                    if (yc < 0 || yc >= height)
+                        continue;
+                    for (var xc = x - 1; xc < x + 2; xc++) {
+                        if (xc > -1 && xc < width)
+                            count += field[yc][xc];
+                    }
+                }
+                return count;
+            }));
+            return result;
+        }
+        function setColor(num, isNothing) {
+            if (num != 0) {
+                num = num % 7;
+                if (num == 0)
+                    num += 2;
+            }
+            return ([
+                ["#44cc44", "#000088", "#000000", "#008888", "#880088", "#880000", "#888800"],
+                ["#ddaa11", "#0000ff", "#00ffff", "#00ff00", "#0000ff", "#00ffff", "#ffff00"]
+            ])[isNothing][num];
+        }
+    </script>
+    <style>
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+            background-color: #ddaa11;
+        }
+
+        .button {
+            cursor: pointer;
+            border: 1px solid black;
+            margin: 0 10px 0 10px;
+        }
+
+        .nop {
+            background-color: #aa5500;
+        }
+
+        .zero {
+            background-color: #ddaa11;
+            color: #ddaa11;
+        }
+
+        .button:hover {
+            background-color: #0033cc;
+            color: #ddaa11;
+        }
+
+        header {
+            height: 50px;
+            text-align: center;
+        }
+
+        #banner {
+            font-size: xx-large;
+            font-weight: bolder;
+            border: none;
+        }
+
+        #helpButton {
+            font-size: xx-large;
+            font-weight: bolder;
+            float: right;
+        }
+
+        #mask {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: black;
+            opacity: 0.5;
+            display: none;
+            z-index: 1;
+            pointer-events: auto;
+        }
+
+        #menu {
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            display: none;
+            color: #550055;
+            z-index: 10;
+            background-color: #aaffaa;
+            padding: 20px;
+            border: 1px solid black;
+        }
+
+        #menu span {
+            display: inline-block;
+            width: 100px;
+        }
+
+        #help {
+            position: absolute;
+            width: 50%;
+            height: 50%;
+            left: 25%;
+            top: 10%;
+            display: none;
+            z-index: 10;
+            border: 1px solid black;
+            background-color: #aaffaa;
+            padding: 40px;
+        }
+
+        #help p {
+            text-align: center;
+            font-weight: bolder;
+            position: relative;
+            top: -40px;
+            font-size: xx-large;
+        }
+
+        #closeHelp {
+            position: absolute;
+            top: 0px;
+            right: 6px;
+            border: none;
+            font-size: xx-large;
+            padding: 0;
+            margin: 0;
+        }
+
+        #closeHelp:hover {
+            background-color: #aaffaa;
+            color: red;
+            padding: 0;
+            margin: 0;
+        }
+
+        #mineFieldContainer {
+            text-align: center;
+            position: absolute;
+            top: 100px;
+            bottom: 100px;
+            left: 0px;
+            right: 0px;
+        }
+
+        #mineField {
+            margin: 0px;
+            display: inline-block;
+            background-color: #44cc44;
+        }
+
+        #status {
+            font-size: xx-large;
+            position: fixed;
+            text-align: center;
+            bottom: 20px;
+            height: 50px;
+            width: 100%;
+        }
+
+        #status span {
+            display: inline-block;
+            width: 200px;
+        }
+    </style>
+</head>
+
+<body>
+    <header><span id="banner" class="button">Gold Sweeper</span><span id="helpButton" class="button">&nbsp;?&nbsp;</span></header>
+    <div id="mask">
+    </div>
+    <nav id="menu">
+        <p><span>height: </span><input id="setHeight"></p>
+        <p><span>width: </span><input id="setWidth"></p>
+        <p><span>treasures: </span><input id="setNum"></p>
+        <p><span>shovels: </span><input id="setLife"></p>
+        <p><span id="startButton" class="button">Start!</span><span id="tweakButton" class="button">tweak</span></p>
+    </nav>
+    <div id="mineFieldContainer">
+        <div id="mineField"></div>
+    </div>
+    <div id="help">
+        <p>Help</p>
+        <span id="closeHelp" class="button">&times;</span>
+        <span style="font-weight: bold; color: red">If you want ANSWER, press F12, goto console, and check global var "answer"</span><br/>
+        <br/><br/>
+        <span>*The number on each block is given by scanner, indicating how many treasures are in the nearby<span style="font-weight: bold; color: red"> 3&times;3 area</span>.</span><br/>
+        <span>*Each block may bury 0 or more treaures(more than 1 is the default behavior, change it in the menu).</span><br/>
+        <span>*A click on a block will cost a shovel and the clicked block will be digged.</span><br/>
+        <span>*If the block cantain 1 or more treasures, then you will dig out exactly 1, and the scanning result will be updated.</span><br/>
+        <span>*If there is no treasure left in the block, then it will turn red, and prevent future click.</span><br/>
+        <br/><br/>
+        <span>方块上的数字代表周围<span style="font-weight: bold; color: red">3&times;3区域</span>内的宝藏总数，每个方块可能包含0个或多个宝藏(甚至所有的剩余宝藏可能都在一个方块内)</span><br/>
+        <span>点击方块将消耗一个铲子来挖掘宝藏。</span><br/>
+        <span>如果该方块包含宝藏，那么你将挖出一个，宝藏探测器的扫描结果将会更新。</span><br/>
+        <span>如果方块内没有宝藏，那么该方块将变红，你将不能再点击该方块。</span>
+    </div>
+    <footer id="status"><span>treasure Left: </span><span id="showNum"></span><span>shovels left: </span><span id="showLife"></span></footer>
+    <script>
+        var answer;
+        var scanResult;
+        var nop;
+        var width;
+        var height;
+        var num;
+        var life;
+        function bind() {
+            document.getElementById('mask').onclick = function () { };
+            document.getElementById('banner').onclick = function () {
+                document.getElementById('menu').style.display = 'block';
+                document.getElementById('mask').style.display = 'block';
+            };
+            document.getElementById('helpButton').onclick = function () {
+                document.getElementById('menu').style.display = 'none';
+                document.getElementById('help').style.display = 'block';
+
+            };
+            document.getElementById('closeHelp').onclick = function () {
+                document.getElementById('help').style.display = 'none';
+            };
+            document.getElementById('startButton').onclick = function () {
+                if (document.getElementById('setWidth').value == "") return;
+                if (document.getElementById('setHeight').value == "") return;
+                if (document.getElementById('setNum').value == "") return;
+                if (document.getElementById('setLife').value == "") return;
+                width = +document.getElementById('setWidth').value;
+                height = +document.getElementById('setHeight').value;
+                num = +document.getElementById('setNum').value;
+                life = +document.getElementById('setLife').value;
+                document.getElementById('menu').style.display = 'none';
+                document.getElementById('mask').style.display = 'none';
+                document.getElementById('banner').innerHTML = "Gold Sweeper";
+                reset();
+                update();
+            };
+        }
+
+        function init() {
+            width = 8;
+            height = 5;
+            num = 20;
+            life = 30;
+            reset();
+            update();
+        }
+        function reset() {
+            answer = newField(height, width, num);
+            scanResult = scan(answer);
+            nop = Array.from(answer, (v) => Array.from(v, () => 0));
+        }
+        function update() {
+            scanResult = scan(answer);
+            var mf = document.getElementById("mineField");
+            var mfc = document.getElementById("mineFieldContainer");
+            mf.innerHTML = "";
+            var len = Math.min(mfc.clientHeight / height, mfc.clientWidth / width);
+            mf.style.width = len * width + "px";
+            mf.style.height = len * height + "px";
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    if (scanResult[y][x] == 0) nop[y][x] = 1;
+                    var block = document.createElement("div");
+                    block.style.display = "inline-block";
+                    block.style.width = len - 1 + "px";
+                    block.style.fontSize = len / 3 * 2 + "px";
+                    block.style.height = len - 1 + "px";
+                    block.style.lineHeight = len + "px";
+                    block.style.cursor = "pointer";
+                    block.style.border = "1px solid black";
+                    block.style.margin = "-0.5px";
+                    block.style.verticalAlign = "center";
+                    block.innerHTML = scanResult[y][x];
+                    if (nop[y][x]) {
+                        if (scanResult[y][x] != 0) {
+                            block.className = "nop";
+                            block.style.color = setColor(scanResult[y][x], 1);
+                        } else {
+                            block.className = "zero";
+                        }
+                    } else {
+                        block.style.color = setColor(scanResult[y][x], 0);
+                        block.onclick = function () {
+                            life--;
+                            if (answer[y][x] <= 0) {
+                                nop[y][x] = 1;
+                            } else {
+                                answer[y][x]--;
+                                num--;
+                            }
+                            update();
+                            if (num <= 0) return win(mf, len);
+                            if (life <= 0) return lose(mf, len);
+
+                        }
+                    }
+                    mf.appendChild(block);
+                }
+            }
+            document.getElementById("showNum").innerHTML = num;
+            document.getElementById("showLife").innerHTML = life;
+        }
+        function lose(mf, len) {
+            mf.innerHTML = "";
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    document.getElementById('banner').innerHTML = "you lose";
+                    var block = document.createElement("div");
+                    block.style.display = "inline-block";
+                    block.style.width = len - 1 + "px";
+                    block.style.height = len - 1 + "px";
+                    block.style.fontSize = len / 3 * 2 + "px";
+                    block.style.lineHeight = len + "px";
+                    block.style.cursor = "pointer";
+                    block.style.border = "1px solid black";
+                    block.style.margin = "-0.5px";
+                    block.style.verticalAlign = "center";
+                    block.style.color = setColor(answer[y][x], 0);
+                    block.innerHTML = answer[y][x];
+                    mf.appendChild(block);
+                }
+            }
+        }
+        function win(mf, len) {
+            document.getElementById('banner').innerHTML = "Victory!";
+        }
+        bind();
+        init();
+    </script>
+</body>
+
+</html>
